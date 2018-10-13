@@ -9,13 +9,13 @@ android {
         externalNativeBuild {
             ndkBuild {
                 abiFilters 'arm64-v8a', 'armeabi-v7a'
-                arguments "NDK_PROJECT_PATH=jni/"
+                arguments  "-DANDROID_CPP_FEATURES=exceptions"
             }
         }
     }
     externalNativeBuild {
-        ndkBuild {
-            path 'jni/Android.mk'
+        cmake {
+            path 'jni/CMakeLists.txt'
         }
     }
 }
