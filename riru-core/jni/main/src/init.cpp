@@ -3,6 +3,7 @@
 #include "log.h"
 #include "hooker.h"
 #include "utils.h"
+#include "modules.h"
 
 extern "C" void inject(void) __attribute__((constructor));
 
@@ -22,6 +23,15 @@ void inject(void) {
     }
     catch (exception const &e ) {
         Log::e << "check process failure: " << e.what() << Log::END;
+        return ;
+    }
+
+    //Load all modules
+    try {
+        Modules::get().loadAll();
+    }
+    catch (exception const &e) {
+        Log::e << "Load modules failure. " << e.what() << Log::END;
         return ;
     }
 

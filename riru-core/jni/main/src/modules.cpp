@@ -78,3 +78,26 @@ Module::NativeHookListArray Module::getNativeHookList(void) noexcept {
 
     return EMPTY_LIST;
 }
+
+Module::~Module() {
+    this->unload();
+}
+
+Modules &Modules::get(void) noexcept {
+    return instance;
+}
+
+void Modules::loadAll(void) {
+    vector<string> module_names = Utils::listDirectory(RIRU_MODULES_CONFIGS_DIR ,false ,DT_DIR);
+
+    for ( string module_name : module_names ) {
+        try {
+            modules[module_name] = Module::load(module_name ,RIRU_MODULES_LIBRARY_PATH(module_name));
+        }
+        catch (exception const &e) {
+            Log::w << "Load module " << module_name << " failure. " << e.what() << Log::END;
+        }
+    }
+}
+
+Modules Modules::instance;

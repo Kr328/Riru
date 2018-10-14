@@ -2,8 +2,10 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include <jni.h>
 
+#include "utils.h"
 #include "riru.h"
 
 using std::string;
@@ -36,6 +38,7 @@ public:
 
 private:
     Module();
+    ~Module();
 
 private:
     string name;
@@ -46,4 +49,21 @@ private:
     void *onForkAndSpecializePost;
     void *onForkSystemServerPre;
     void *onForkSystemServerPost;
+};
+
+class Modules {
+private:
+    Modules() {};
+
+public:
+    static Modules& get(void) noexcept;
+
+public:
+    void loadAll(void);
+
+private:
+    std::map<string ,Module::Pointer> modules;
+
+private:
+    static Modules instance;
 };
