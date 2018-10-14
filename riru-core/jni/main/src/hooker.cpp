@@ -16,8 +16,11 @@ void Hooker::install(void) {
         xhook_clear();
 }
 
-jint Hooker::onJniRegisterMethods(JNIEnv *env, const char *class_name,
-                                  const JNINativeMethod *methods, jint length) {
+jint Hooker::onJniRegisterMethods(JNIEnv *env, const char *class_name, const JNINativeMethod *methods, jint length) {
+    vector<JNINativeMethod> modifiable_methods(methods ,methods + length);
+
+    if ( Modules::get().handleRegisterNative(class_name ,modifiable_methods) )
+        return originalRegisterMethod(env ,class_name ,&modifiable_methods[0] ,(int)modifiable_methods.size());
 
     return originalRegisterMethod(env , class_name ,methods ,length);
 }
