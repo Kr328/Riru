@@ -1,6 +1,8 @@
 #include "modules.h"
+#include "riru.h"
 
 #include <dlfcn.h>
+#include <jni.h>
 
 Module::Pointer Module::load(string const &name ,string const &path) {
     Pointer result = Pointer(new Module());
@@ -70,11 +72,11 @@ int Module::invokeNativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res
     return 0;
 }
 
-Module::NativeHookListArray Module::getNativeHookList(void) noexcept {
+Module::NativeHookListPointer Module::getNativeHookList(void) noexcept {
     static riru_module_native_hook_list_t EMPTY_LIST[] = {RIRU_NATIVE_HOOK_LIST_END};
 
     if ( nativeHookList )
-        return reinterpret_cast<NativeHookListArray>(nativeHookList);
+        return reinterpret_cast<NativeHookListPointer>(nativeHookList);
 
     return EMPTY_LIST;
 }
@@ -98,6 +100,50 @@ void Modules::loadAll(void) {
             Log::w << "Load module " << module_name << " failure. " << e.what() << Log::END;
         }
     }
+}
+
+void Modules::refreshCache(void) {
+    hookCache.clear();
+
+    for ( auto element : modules ) {
+        auto p = element.second->getNativeHookList();
+
+        while ( p->class_name ) {
+            auto it = hookCache.find(p->class_name);
+            if ( it == hookCache.end() )
+                hookCache[p->class_name] = std::multimap<string ,Module::NativeHookListPointer>();
+            hookCache[p->class_name].insert(std::pair<string ,Module::NativeHookListPointer>(methodId(p->method_name ,p->signature) ,p));
+            p++;
+        }
+    }
+}
+
+bool Modules::handleRegisterNative(string const &class_name, vector<JNINativeMethod> &methods) {
+    auto current = hookCache.find(class_name);
+    if ( current == hookCache.end() )
+        return false;
+
+    for ( JNINativeMethod &method : methods ) {
+        string current_method_id = methodId(method.name ,method.signature);
+
+        //build call chain
+        auto method_hooks_iter = (*current).second.equal_range(current_method_id);
+        if ( method_hooks_iter.first == method_hooks_iter.second )
+            continue;
+
+        void *current_hook_function = method.fnPtr;
+        std::for_each(method_hooks_iter.first ,method_hooks_iter.second ,[&](std::pair<string ,Module::NativeHookListPointer> p) {
+            *(p.second->original_function)   = current_hook_function;
+            current_hook_function = p.second->hook_function;
+        });
+        method.fnPtr = current_hook_function;
+    }
+
+    return false;
+}
+
+string Modules::methodId(string const &name, string const &signature) {
+    return name + "#" + signature;
 }
 
 Modules Modules::instance;

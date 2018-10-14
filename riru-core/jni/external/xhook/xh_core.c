@@ -144,7 +144,7 @@ int xh_core_register(const char *pathname_regex_str, const char *symbol,
 
     if(xh_core_inited)
     {
-        XH_LOG_ERROR("do not register hook after refresh(): %s, %s", pathname_regex_str, symbol);
+        XH_LOG_ERROR("do not register hook after refreshCache(): %s, %s", pathname_regex_str, symbol);
         return XH_ERRNO_INVAL;
     }
 
@@ -184,7 +184,7 @@ int xh_core_ignore(const char *pathname_regex_str, const char *symbol)
 
     if(xh_core_inited)
     {
-        XH_LOG_ERROR("do not ignore hook after refresh(): %s, %s", pathname_regex_str, symbol ? symbol : "ALL");
+        XH_LOG_ERROR("do not ignore hook after refreshCache(): %s, %s", pathname_regex_str, symbol ? symbol : "ALL");
         return XH_ERRNO_INVAL;
     }
 
@@ -470,7 +470,7 @@ static void *xh_core_refresh_thread_func(void *arg)
 
     while(xh_core_refresh_thread_running)
     {
-        //waiting for a refresh task or exit
+        //waiting for a refreshCache task or exit
         pthread_mutex_lock(&xh_core_mutex);
         while(!xh_core_refresh_thread_do && xh_core_refresh_thread_running)
         {
@@ -484,7 +484,7 @@ static void *xh_core_refresh_thread_func(void *arg)
         xh_core_refresh_thread_do = 0;
         pthread_mutex_unlock(&xh_core_mutex);
 
-        //refresh
+        //refreshCache
         pthread_mutex_lock(&xh_core_refresh_mutex);
         xh_core_refresh_impl();
         pthread_mutex_unlock(&xh_core_refresh_mutex);
@@ -536,7 +536,7 @@ static void xh_core_init_async_once()
 
     xh_core_async_inited = 1;
     
-    //create async refresh thread
+    //create async refreshCache thread
     xh_core_refresh_thread_running = 1;
     if(0 != pthread_create(&xh_core_refresh_thread_tid, NULL, &xh_core_refresh_thread_func, NULL))
     {
@@ -563,7 +563,7 @@ int xh_core_refresh(int async)
         xh_core_init_async_once();
         if(!xh_core_async_init_ok) return XH_ERRNO_UNKNOWN;
     
-        //refresh async
+        //refreshCache async
         pthread_mutex_lock(&xh_core_mutex);
         xh_core_refresh_thread_do = 1;
         pthread_cond_signal(&xh_core_cond);
@@ -571,7 +571,7 @@ int xh_core_refresh(int async)
     }
     else
     {
-        //refresh sync
+        //refreshCache sync
         pthread_mutex_lock(&xh_core_refresh_mutex);
         xh_core_refresh_impl();
         pthread_mutex_unlock(&xh_core_refresh_mutex);
@@ -582,7 +582,7 @@ int xh_core_refresh(int async)
 
 void xh_core_clear()
 {
-    //stop the async refresh thread
+    //stop the async refreshCache thread
     if(xh_core_async_init_ok)
     {
         pthread_mutex_lock(&xh_core_mutex);

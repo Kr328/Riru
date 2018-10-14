@@ -2,6 +2,7 @@
 
 #include "xhook/xhook.h"
 #include "config.h"
+#include "modules.h"
 
 void Hooker::install(void) {
     if ( xhook_register(PATTERN_JNI_REGISTER_METHODS_LIBRARY , JNI_REGISTER_METHODS_SYMBOL ,
@@ -17,10 +18,8 @@ void Hooker::install(void) {
 
 jint Hooker::onJniRegisterMethods(JNIEnv *env, const char *class_name,
                                   const JNINativeMethod *methods, jint length) {
-    std::vector<JNINativeMethod> modifiableMethodsArray(methods ,methods + length);
 
-    return originalRegisterMethod(env , class_name , &modifiableMethodsArray[0] ,
-                                  static_cast<jint>(modifiableMethodsArray.size()));
+    return originalRegisterMethod(env , class_name ,methods ,length);
 }
 
 Hooker::FunctionJniRegisterMethods Hooker::originalRegisterMethod;

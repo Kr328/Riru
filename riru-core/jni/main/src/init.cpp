@@ -29,6 +29,7 @@ void inject(void) {
     //Load all modules
     try {
         Modules::get().loadAll();
+        Modules::get().refreshCache();
     }
     catch (exception const &e) {
         Log::e << "Load modules failure. " << e.what() << Log::END;

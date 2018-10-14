@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <list>
 #include <jni.h>
 
 #include "utils.h"
@@ -20,7 +21,7 @@ public:
     typedef int  (*NativeForkAndSpecializePostFunction)(JNIEnv *, jclass, jint);
     typedef void (*NativeForkSystemServerPreFunction)(JNIEnv *, jclass, uid_t, gid_t, jintArray, jint, jobjectArray, jlong, jlong);
     typedef int  (*NativeForkSystemServerPostFunction)(JNIEnv *, jclass, jint);
-    typedef riru_module_native_hook_list_t* NativeHookListArray;
+    typedef riru_module_native_hook_list_t* NativeHookListPointer;
 
 public:
     static Pointer load(string const &name ,string const &path);
@@ -34,10 +35,12 @@ public:
     int  invokeNativeForkAndSpecializePost(JNIEnv *, jclass, jint);
     void invokeNativeForkSystemServerPre(JNIEnv *, jclass, uid_t, gid_t, jintArray, jint, jobjectArray, jlong, jlong);
     int  invokeNativeForkSystemServerPost(JNIEnv *, jclass, jint);
-    NativeHookListArray getNativeHookList(void) noexcept;
+    NativeHookListPointer getNativeHookList(void) noexcept;
 
 private:
     Module();
+
+public:
     ~Module();
 
 private:
@@ -60,9 +63,17 @@ public:
 
 public:
     void loadAll(void);
+    void refreshCache(void);
+
+public:
+    bool handleRegisterNative(string const &class_name ,vector<JNINativeMethod> &methods);
 
 private:
-    std::map<string ,Module::Pointer> modules;
+    string methodId(string const &name ,string const &signature);
+
+private:
+    std::map<string ,Module::Pointer>                                        modules;    // name to module
+    std::map<string ,std::multimap<string ,Module::NativeHookListPointer>>   hookCache;  // class name to ( method to hook entry )
 
 private:
     static Modules instance;
