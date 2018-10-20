@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef DEBUG
-#define DEBUG false
+#define DEBUG true
 #endif
 
 #ifdef __LP64__

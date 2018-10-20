@@ -73,7 +73,7 @@ public:
     void invokeAllNativeForkSystemServerPost(JNIEnv *, jclass, jint);
 
 public:
-    bool handleRegisterNative(string const &class_name ,vector<JNINativeMethod> &methods);
+    bool handleJniRegisterNativeMethods(string const &class_name, vector<JNINativeMethod> &methods);
 
 private:
     static string methodId(string const &name ,string const &signature);

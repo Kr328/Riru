@@ -8,6 +8,8 @@
 #include "modules.h"
 
 void Hooker::install(void) {
+    Log::info() << "[Hooker] install " << Log::END;
+
     if ( xhook_register(PATTERN_JNI_REGISTER_METHODS_LIBRARY , JNI_REGISTER_METHODS_SYMBOL ,
                         reinterpret_cast<void*>(&Hooker::onJniRegisterMethods) ,
                    reinterpret_cast<void **>(&originalJniRegisterMethods)) )
@@ -24,7 +26,8 @@ jint Hooker::onJniRegisterMethods(JNIEnv *env, const char *class_name, const JNI
 
     vector<JNINativeMethod> modifiable_methods(methods ,methods + length);
 
-    if ( InternalHook::handleRegisterNative(class_name ,modifiable_methods) || Modules::get().handleRegisterNative(class_name ,modifiable_methods) )
+    if (InternalHook::handleJniRegisterNativeMethods(class_name, modifiable_methods) ||
+            Modules::get().handleJniRegisterNativeMethods(class_name, modifiable_methods) )
         return originalJniRegisterMethods(env ,class_name ,&modifiable_methods[0] ,(int)modifiable_methods.size());
 
     return originalJniRegisterMethods(env , class_name ,methods ,length);
@@ -32,23 +35,30 @@ jint Hooker::onJniRegisterMethods(JNIEnv *env, const char *class_name, const JNI
 
 Hooker::FunctionJniRegisterMethods Hooker::originalJniRegisterMethods;
 
-bool InternalHook::handleRegisterNative(string const &class_name, vector<JNINativeMethod> &methods) {
+bool InternalHook::handleJniRegisterNativeMethods(string const &class_name,
+                                                  vector<JNINativeMethod> &methods) {
     if ( class_name != "com/android/internal/os/Zygote" ) return false;
 
-    Log::info() << "[InternalHook] handleRegisterNative com/android/internal/os/Zygote" << Log::END;
+    Log::info() << "[InternalHook] handleJniRegisterNativeMethods com/android/internal/os/Zygote" << Log::END;
 
     for ( JNINativeMethod &method : methods ) {
         if ( !strcmp(method.name ,NATIVE_FORK_AND_SPECIALIZE_METHOD) ) {
+            Log::info() << "[InternalHook] Found " NATIVE_FORK_AND_SPECIALIZE_METHOD << Log::END;
             if      ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_MARSHMALLOW_SIGNATURE) )
                 method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializeMarshmallow;
             else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_OREO_SIGNATURE) )
                 method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializeOreo;
             else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_PIE_SIGNATURE) )
                 method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializePie;
+            else
+                Log::warn() << "[InternalHook] " NATIVE_FORK_AND_SPECIALIZE_METHOD " signature match failure." << Log::END;
         }
         else if ( !strcmp(method.name ,NATIVE_FORK_SYSTEM_SERVER_METHOD) ) {
+            Log::info() << "[InternalHook] Found " NATIVE_FORK_SYSTEM_SERVER_METHOD << Log::END;
             if ( !strcmp(method.signature ,NATIVE_FORK_SYSTEM_SERVER_SIGNATURE) )
                 method.fnPtr = (void*) &InternalHook::onNativeForkSystemServer;
+            else
+                Log::warn() << "[InternalHook] " NATIVE_FORK_SYSTEM_SERVER_METHOD " signature match failure." << Log::END;
         }
     }
 

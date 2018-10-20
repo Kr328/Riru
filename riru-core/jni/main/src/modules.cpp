@@ -136,8 +136,9 @@ void Modules::refreshCache(void) {
     }
 }
 
-bool Modules::handleRegisterNative(string const &class_name, vector<JNINativeMethod> &methods) {
-    Log::info() << "[Modules] handleRegisterNative" << Log::END;
+bool Modules::handleJniRegisterNativeMethods(string const &class_name,
+                                             vector<JNINativeMethod> &methods) {
+    Log::debug() << "[Modules] handleJniRegisterNativeMethods " << class_name << Log::END;
 
     auto current = hookCache.find(class_name);
     if ( current == hookCache.end() )

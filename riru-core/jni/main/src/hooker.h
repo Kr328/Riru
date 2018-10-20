@@ -22,7 +22,8 @@ private:
 
 class InternalHook {
 public:
-    static bool handleRegisterNative(string const &class_name, vector<JNINativeMethod> &methods);
+    static bool handleJniRegisterNativeMethods(string const &class_name,
+                                               vector<JNINativeMethod> &methods);
 
 public:
     static jint onNativeForkAndSpecializeMarshmallow(JNIEnv *env, jclass clazz, jint uid, jint gid, jintArray gids, jint debug_flags, jobjectArray rlimits, jint mount_external, jstring se_info, jstring se_name, jintArray fdsToClose, jstring instructionSet, jstring appDataDir);
