@@ -59,22 +59,26 @@ private:
     Modules() {};
 
 public:
-    static Modules& get(void) noexcept;
+    static Modules& get(void);
 
 public:
     void loadAll(void);
     void refreshCache(void);
 
 public:
+    void invokeAllModuleLoaded(void);
+    void invokeAllNativeForkAndSpecializePre(JNIEnv *, jclass, jint, jint, jintArray, jint, jobjectArray, jint, jstring, jstring, jintArray, jintArray, jboolean, jstring, jstring);
+    void invokeAllNativeForkAndSpecializePost(JNIEnv *, jclass, jint);
+    void invokeAllNativeForkSystemServerPre(JNIEnv *, jclass, uid_t, gid_t, jintArray, jint, jobjectArray, jlong, jlong);
+    void invokeAllNativeForkSystemServerPost(JNIEnv *, jclass, jint);
+
+public:
     bool handleRegisterNative(string const &class_name ,vector<JNINativeMethod> &methods);
 
 private:
-    string methodId(string const &name ,string const &signature);
+    static string methodId(string const &name ,string const &signature);
 
 private:
-    std::map<string ,Module::Pointer>                                        modules;    // name to module
+    std::vector<Module::Pointer>                                             modules;    // name to module
     std::map<string ,std::multimap<string ,Module::NativeHookListPointer>>   hookCache;  // class name to ( method to hook entry )
-
-private:
-    static Modules instance;
 };

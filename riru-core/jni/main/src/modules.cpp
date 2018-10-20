@@ -9,7 +9,7 @@ Module::Pointer Module::load(string const &name ,string const &path) {
 
     void *handle             = dlopen(path.c_str() ,RTLD_LAZY);
     if ( handle == nullptr )
-        throw std::runtime_error("Unable to open " + path + " " + dlerror());
+        throw std::runtime_error(dlerror());
 
     result->name                    = name;
     result->handle                  = handle;
@@ -32,8 +32,11 @@ void Module::unload(void) {
 }
 
 void Module::invokeModuleLoaded(void) {
-    if ( onModuleLoaded )
-        reinterpret_cast<ModuleLoadedFunction>(onModuleLoaded)();
+    if ( !onModuleLoaded ) return;
+
+    Log::info() << "[Module] " << name << ": invokeModuleLoaded" << Log::END;
+
+    reinterpret_cast<ModuleLoadedFunction>(onModuleLoaded)();
 }
 
 void Module::invokeNativeForkAndSpecializePre(JNIEnv *env, jclass clazz, jint uid, jint gid,
@@ -45,31 +48,41 @@ void Module::invokeNativeForkAndSpecializePre(JNIEnv *env, jclass clazz, jint ui
                                               jintArray fdsToIgnore,
                                               jboolean is_child_zygote, jstring instructionSet,
                                               jstring appDataDir) {
-    if ( onForkAndSpecializePre )
-        reinterpret_cast<NativeForkAndSpecializePreFunction>(onForkAndSpecializePre)(env ,clazz ,uid ,gid ,gids ,
+    if ( !onForkAndSpecializePre ) return;
+
+    Log::info() << "[Module] " << name << ": invokeNativeForkAndSpecializePre" << Log::END;
+
+    reinterpret_cast<NativeForkAndSpecializePreFunction>(onForkAndSpecializePre)(env ,clazz ,uid ,gid ,gids ,
                                                                                  runtime_flags ,rlimits ,mount_external ,se_info ,se_name ,
                                                                                  fdsToClose ,fdsToIgnore ,is_child_zygote ,instructionSet ,appDataDir);
 }
 
 int Module::invokeNativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
-    if ( onForkAndSpecializePost )
-        return reinterpret_cast<NativeForkAndSpecializePostFunction>(onForkAndSpecializePost)(env ,clazz ,res);
-    return 0;
+    if ( !onForkAndSpecializePost ) return 0;
+
+    Log::info() << "[Module] " << name << ": invokeNativeForkAndSpecializePost" << Log::END;
+
+    return reinterpret_cast<NativeForkAndSpecializePostFunction>(onForkAndSpecializePost)(env ,clazz ,res);
 }
 
 void Module::invokeNativeForkSystemServerPre(JNIEnv *env, jclass clazz, uid_t uid, gid_t gid, jintArray gids,
                                              jint debug_flags, jobjectArray rlimits, jlong permittedCapabilities,
                                              jlong effectiveCapabilities) {
-    if ( onForkSystemServerPre )
-        reinterpret_cast<NativeForkSystemServerPreFunction>(onForkSystemServerPre)(env ,clazz ,uid ,gid ,gids ,
-                                                                                   debug_flags ,rlimits ,permittedCapabilities ,
-                                                                                   effectiveCapabilities);
+    if ( !onForkSystemServerPre ) return ;
+
+    Log::info() << "[Module] " << name << ": invokeNativeForkSystemServerPre" << Log::END;
+
+    reinterpret_cast<NativeForkSystemServerPreFunction>(onForkSystemServerPre)(env ,clazz ,uid ,gid ,gids ,
+                                                                               debug_flags ,rlimits ,permittedCapabilities ,
+                                                                               effectiveCapabilities);
 }
 
 int Module::invokeNativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
-    if ( onForkSystemServerPost )
-        return reinterpret_cast<NativeForkSystemServerPostFunction>(onForkSystemServerPost)(env ,clazz ,res);
-    return 0;
+    if ( !onForkSystemServerPost ) return 0;
+
+    Log::info() << "[Module] " << name << ": invokeNativeForkSystemServerPost" << Log::END;
+
+    return reinterpret_cast<NativeForkSystemServerPostFunction>(onForkSystemServerPost)(env ,clazz ,res);
 }
 
 Module::NativeHookListPointer Module::getNativeHookList(void) noexcept {
@@ -85,28 +98,33 @@ Module::~Module() {
     this->unload();
 }
 
-Modules &Modules::get(void) noexcept {
-    return instance;
+Modules &Modules::get(void) {
+    static Modules *instance = new Modules();
+    return *instance;
 }
 
 void Modules::loadAll(void) {
+    Log::info() << "[Modules] loadAll" << Log::END;
     vector<string> module_names = Utils::listDirectory(RIRU_MODULES_CONFIGS_DIR ,false ,DT_DIR);
 
     for ( string module_name : module_names ) {
         try {
-            modules[module_name] = Module::load(module_name ,RIRU_MODULES_LIBRARY_PATH(module_name));
+            Log::info() << "[Modules] Loading " << module_name << Log::END;
+            modules.push_back(Module::load(module_name ,RIRU_MODULES_LIBRARY_PATH(module_name)));
         }
         catch (exception const &e) {
-            Log::w << "Load module " << module_name << " failure. " << e.what() << Log::END;
+            Log::warn() << "[Modules] Load module " << module_name << " failure. " << e.what() << Log::END;
         }
     }
 }
 
 void Modules::refreshCache(void) {
+    Log::info() << "[Modules] refreshCache " << Log::END;
+
     hookCache.clear();
 
-    for ( auto element : modules ) {
-        auto p = element.second->getNativeHookList();
+    for ( auto module : modules ) {
+        auto p = module->getNativeHookList();
 
         while ( p->class_name ) {
             auto it = hookCache.find(p->class_name);
@@ -119,6 +137,8 @@ void Modules::refreshCache(void) {
 }
 
 bool Modules::handleRegisterNative(string const &class_name, vector<JNINativeMethod> &methods) {
+    Log::info() << "[Modules] handleRegisterNative" << Log::END;
+
     auto current = hookCache.find(class_name);
     if ( current == hookCache.end() )
         return false;
@@ -127,23 +147,66 @@ bool Modules::handleRegisterNative(string const &class_name, vector<JNINativeMet
         string current_method_id = methodId(method.name ,method.signature);
 
         //build call chain
-        auto method_hooks_iter = (*current).second.equal_range(current_method_id);
-        if ( method_hooks_iter.first == method_hooks_iter.second )
+        auto method_hooks_iterator = (*current).second.equal_range(current_method_id);
+        if ( method_hooks_iterator.first == method_hooks_iterator.second )
             continue;
 
         void *current_hook_function = method.fnPtr;
-        std::for_each(method_hooks_iter.first ,method_hooks_iter.second ,[&](std::pair<string ,Module::NativeHookListPointer> p) {
+        std::for_each(method_hooks_iterator.first ,method_hooks_iterator.second ,[&](std::pair<string ,Module::NativeHookListPointer> p) {
             *(p.second->original_function)   = current_hook_function;
             current_hook_function = p.second->hook_function;
         });
         method.fnPtr = current_hook_function;
     }
 
-    return false;
+    return true;
 }
 
 string Modules::methodId(string const &name, string const &signature) {
     return name + "#" + signature;
 }
 
-Modules Modules::instance;
+void Modules::invokeAllModuleLoaded(void) {
+    for ( auto module : modules )
+        module->invokeModuleLoaded();
+}
+
+void Modules::invokeAllNativeForkAndSpecializePre(JNIEnv *env, jclass clazz, jint uid, jint gid, jintArray gids,
+                                                  jint runtime_flags, jobjectArray rlimits,
+                                                  jint mount_external, jstring se_info, jstring se_name,
+                                                  jintArray fdsToClose, jintArray fdsToIgnore,
+                                                  jboolean is_child_zygote, jstring instructionSet, jstring appDataDir) {
+    Log::info() << "[Modules] invokeAllNativeForkAndSpecializePre" << Log::END;
+
+    for ( auto module : modules ) {
+        module->invokeNativeForkAndSpecializePre(env, clazz, uid, gid, gids,
+                                                             runtime_flags, rlimits,
+                                                             mount_external, se_info, se_name,
+                                                             fdsToClose, fdsToIgnore,
+                                                             is_child_zygote, instructionSet,
+                                                             appDataDir);
+    }
+}
+
+void Modules::invokeAllNativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
+    Log::info() << "[Modules] invokeAllNativeForkAndSpecializePost" << Log::END;
+
+    for ( auto module : modules )
+        module->invokeNativeForkAndSpecializePost(env ,clazz ,res);
+}
+
+void Modules::invokeAllNativeForkSystemServerPre(JNIEnv *env, jclass clazz, uid_t uid, gid_t gid, jintArray gids, jint debug_flags,
+                                                 jobjectArray rlimits, jlong permittedCapabilities, jlong effectiveCapabilities) {
+    Log::info() << "[Modules] invokeAllNativeForkSystemServerPre" << Log::END;
+
+    for ( auto module : modules )
+        module->invokeNativeForkSystemServerPre(env ,clazz ,uid ,gid ,gids ,debug_flags ,
+                                                            rlimits ,permittedCapabilities ,effectiveCapabilities);
+}
+
+void Modules::invokeAllNativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
+    Log::info() << "[Modules] invokeAllNativeForkSystemServerPost" << Log::END;
+
+    for ( auto module : modules )
+        module->invokeNativeForkSystemServerPost(env ,clazz ,res);
+}

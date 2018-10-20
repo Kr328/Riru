@@ -26,7 +26,7 @@ vector<string> Utils::listDirectory(string const &path ,bool with_prefix ,int ty
     errno = 0;
     dirent *ent = nullptr;
     while ((ent = readdir(dir))) {
-        if ( ent->d_type & type )
+        if ( ent->d_type & type && ent->d_name[0] != '.' )
             result.push_back(with_prefix ? path + "/" + ent->d_name : ent->d_name);
     }
 

@@ -19,33 +19,29 @@ public:
     class EndType {} static END;
     class LogStream {
     public:
-        LogStream(int t ,bool d = false) : type(t) ,disable(d) {};
+        LogStream(int t ,bool d = false) : stream() ,type(t) ,disable(d) {};
 
     public:
-        std::ostringstream stream;
-        int type;
+        std::stringstream stream;
+        int  type;
         bool disable;
     };
 
 public:
-    static LogStream i;
-    static LogStream e;
-    static LogStream w;
-    static LogStream d;
-    static LogStream v;
+    static LogStream &info(void);
+    static LogStream &error(void);
+    static LogStream &warn(void);
+    static LogStream &debug(void);
+    static LogStream &verbose(void);
 };
 
-std::ostringstream& operator<<(std::ostringstream& s ,Log::EndType t);
+Log::LogStream& operator<<(Log::LogStream& log ,Log::EndType const &e);
 
 template<typename T>
 Log::LogStream& operator<<(Log::LogStream& log ,T const &v) {
     if ( log.disable ) return log;
 
-    if ( std::is_same<Log::EndType ,T>::value ) {
-        __android_log_print(log.type ,TAG ,"%s" ,log.stream.str().c_str());
-        log.stream.str(string());
-    }
-    else
-        log.stream << v;
+    log.stream << v;
+
     return log;
 }

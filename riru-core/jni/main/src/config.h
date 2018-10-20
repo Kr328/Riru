@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef DEBUG
-#define DEBUG true
+#define DEBUG false
 #endif
 
 #ifdef __LP64__
@@ -15,6 +15,14 @@
 #define CURRENT_PROCESS_EXE_PATH "/proc/self/exe"
 
 #define PATTERN_JNI_REGISTER_METHODS_LIBRARY ".*android_runtime.*"
-#define JNI_REGISTER_METHODS_SYMBOL          "jniRegisterMethods"
+#define JNI_REGISTER_METHODS_SYMBOL          "jniRegisterNativeMethods"
 
-#define RIRU_MODULES_CONFIGS_DIR             "/data/riru/modules"
+#define RIRU_MODULES_CONFIGS_DIR             "/data/misc/riru/modules"
+
+#define NATIVE_FORK_AND_SPECIALIZE_METHOD "nativeForkAndSpecialize"
+#define NATIVE_FORK_SYSTEM_SERVER_METHOD  "nativeForkSystemServer"
+
+#define NATIVE_FORK_AND_SPECIALIZE_MARSHMALLOW_SIGNATURE "(II[II[[IILjava/lang/String;Ljava/lang/String;[ILjava/lang/String;Ljava/lang/String;)I"
+#define NATIVE_FORK_AND_SPECIALIZE_OREO_SIGNATURE        "(II[II[[IILjava/lang/String;Ljava/lang/String;[I[ILjava/lang/String;Ljava/lang/String;)I"
+#define NATIVE_FORK_AND_SPECIALIZE_PIE_SIGNATURE         "(II[II[[IILjava/lang/String;Ljava/lang/String;[I[IZLjava/lang/String;Ljava/lang/String;)I"
+#define NATIVE_FORK_SYSTEM_SERVER_SIGNATURE              "(II[II[[IJJ)I"
