@@ -30,6 +30,8 @@ vector<string> Utils::listDirectory(string const &path ,bool with_prefix ,int ty
             result.push_back(with_prefix ? path + "/" + ent->d_name : ent->d_name);
     }
 
+    closedir(dir);
+
     if ( errno != 0 )
         throw std::runtime_error("readdir " + path + " : " + strerror(errno));
 

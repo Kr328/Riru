@@ -48,10 +48,10 @@ private:
     void *handle;
     void *nativeHookList;
     void *onModuleLoaded;
-    void *onForkAndSpecializePre;
-    void *onForkAndSpecializePost;
-    void *onForkSystemServerPre;
-    void *onForkSystemServerPost;
+    void *onNativeForkAndSpecializePre;
+    void *onNativeForkAndSpecializePost;
+    void *onNativeForkSystemServerPre;
+    void *onNativeForkSystemServerPost;
 };
 
 class Modules {

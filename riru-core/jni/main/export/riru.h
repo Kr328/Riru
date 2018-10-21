@@ -22,9 +22,9 @@ typedef struct {
 #define ON_MODULE_LOADED_SYMBOL                       "onModuleLoaded"
 #define NATIVE_HOOK_LIST_SYMBOL                       "nativeHookList"
 #define NATIVE_FORK_AND_SPECIALIZE_PRE_SYMBOL         "nativeForkAndSpecializePre"
-#define NATIVE_FORK_AND_SPECIALIZE_POST_SYMBOL        "nativeForkAndSpecializePre"
+#define NATIVE_FORK_AND_SPECIALIZE_POST_SYMBOL        "nativeForkAndSpecializePost"
 #define NATIVE_FORK_SYSTEM_SERVER_PRE_SYMBOL          "nativeForkSystemServerPre"
-#define NATIVE_FORK_SYSTEM_SERVER_POST_SYMBOL         "nativeForkSystemServerPre"
+#define NATIVE_FORK_SYSTEM_SERVER_POST_SYMBOL         "nativeForkSystemServerPost"
 
 #ifdef __cplusplus
 };

@@ -44,19 +44,27 @@ bool InternalHook::handleJniRegisterNativeMethods(string const &class_name,
     for ( JNINativeMethod &method : methods ) {
         if ( !strcmp(method.name ,NATIVE_FORK_AND_SPECIALIZE_METHOD) ) {
             Log::info() << "[InternalHook] Found " NATIVE_FORK_AND_SPECIALIZE_METHOD << Log::END;
-            if      ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_MARSHMALLOW_SIGNATURE) )
-                method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializeMarshmallow;
-            else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_OREO_SIGNATURE) )
-                method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializeOreo;
-            else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_PIE_SIGNATURE) )
-                method.fnPtr = (void*) &InternalHook::onNativeForkAndSpecializePie;
+            if      ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_MARSHMALLOW_SIGNATURE) ) {
+                originalNativeForkAndSpecializeMarshmallow = (NativeForkAndSpecializeMarshmallowFunction) method.fnPtr;
+                method.fnPtr = (void *) &InternalHook::onNativeForkAndSpecializeMarshmallow;
+            }
+            else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_OREO_SIGNATURE) ) {
+                originalNativeForkAndSpecializeOreo = (NativeForkAndSpecializeOreoFunction) method.fnPtr;
+                method.fnPtr = (void *) &InternalHook::onNativeForkAndSpecializeOreo;
+            }
+            else if ( !strcmp(method.signature ,NATIVE_FORK_AND_SPECIALIZE_PIE_SIGNATURE) ) {
+                originalNativeForkAndSpecializePie = (NativeForkAndSpecializePieFunction) method.fnPtr;
+                method.fnPtr = (void *) &InternalHook::onNativeForkAndSpecializePie;
+            }
             else
                 Log::warn() << "[InternalHook] " NATIVE_FORK_AND_SPECIALIZE_METHOD " signature match failure." << Log::END;
         }
         else if ( !strcmp(method.name ,NATIVE_FORK_SYSTEM_SERVER_METHOD) ) {
             Log::info() << "[InternalHook] Found " NATIVE_FORK_SYSTEM_SERVER_METHOD << Log::END;
-            if ( !strcmp(method.signature ,NATIVE_FORK_SYSTEM_SERVER_SIGNATURE) )
-                method.fnPtr = (void*) &InternalHook::onNativeForkSystemServer;
+            if ( !strcmp(method.signature ,NATIVE_FORK_SYSTEM_SERVER_SIGNATURE) ) {
+                originalNativeForkSystemServer = (NativeForkSystemServerFunction) method.fnPtr;
+                method.fnPtr = (void *) &InternalHook::onNativeForkSystemServer;
+            }
             else
                 Log::warn() << "[InternalHook] " NATIVE_FORK_SYSTEM_SERVER_METHOD " signature match failure." << Log::END;
         }
@@ -154,7 +162,7 @@ bool InternalHook::shouldSkipUid(int uid) {
     return !(10000 <= appId && appId <= 19999);
 }
 
-jint (*InternalHook::originalNativeForkAndSpecializeMarshmallow)(JNIEnv *env, jclass clazz, jint uid, jint gid, jintArray gids, jint debug_flags, jobjectArray rlimits, jint mount_external, jstring se_info, jstring se_name, jintArray fdsToClose, jstring instructionSet, jstring appDataDir);
-jint (*InternalHook::originalNativeForkAndSpecializeOreo)(JNIEnv *env, jclass clazz, jint uid, jint gid, jintArray gids, jint debug_flags, jobjectArray rlimits, jint mount_external, jstring se_info, jstring se_name, jintArray fdsToClose, jintArray fdsToIgnore, jstring instructionSet, jstring appDataDir);
-jint (*InternalHook::originalNativeForkAndSpecializePie)(JNIEnv *env, jclass clazz, jint uid, jint gid, jintArray gids, jint runtime_flags, jobjectArray rlimits, jint mount_external, jstring se_info, jstring se_name, jintArray fdsToClose, jintArray fdsToIgnore, jboolean is_child_zygote, jstring instructionSet, jstring appDataDir);
-jint (*InternalHook::originalNativeForkSystemServer)(JNIEnv *env, jclass clazz, uid_t uid, gid_t gid, jintArray gids, jint debug_flags, jobjectArray rlimits, jlong permittedCapabilities, jlong effectiveCapabilities);
+InternalHook::NativeForkAndSpecializeMarshmallowFunction InternalHook::originalNativeForkAndSpecializeMarshmallow;
+InternalHook::NativeForkAndSpecializeOreoFunction        InternalHook::originalNativeForkAndSpecializeOreo;
+InternalHook::NativeForkAndSpecializePieFunction         InternalHook::originalNativeForkAndSpecializePie;
+InternalHook::NativeForkSystemServerFunction             InternalHook::originalNativeForkSystemServer;

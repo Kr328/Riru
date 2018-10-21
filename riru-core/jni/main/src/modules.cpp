@@ -5,20 +5,20 @@
 #include <jni.h>
 
 Module::Pointer Module::load(string const &name ,string const &path) {
-    Pointer result = Pointer(new Module());
-
     void *handle             = dlopen(path.c_str() ,RTLD_LAZY);
     if ( handle == nullptr )
         throw std::runtime_error(dlerror());
 
-    result->name                    = name;
-    result->handle                  = handle;
-    result->nativeHookList          = dlsym(handle ,NATIVE_HOOK_LIST_SYMBOL);
-    result->onModuleLoaded          = dlsym(handle ,ON_MODULE_LOADED_SYMBOL);
-    result->onForkAndSpecializePre  = dlsym(handle ,NATIVE_FORK_AND_SPECIALIZE_PRE_SYMBOL);
-    result->onForkAndSpecializePost = dlsym(handle ,NATIVE_FORK_AND_SPECIALIZE_POST_SYMBOL);
-    result->onForkSystemServerPre   = dlsym(handle ,NATIVE_FORK_SYSTEM_SERVER_PRE_SYMBOL);
-    result->onForkSystemServerPost  = dlsym(handle ,NATIVE_FORK_SYSTEM_SERVER_POST_SYMBOL);
+    Pointer result = Pointer(new Module());
+
+    result->name                          = name;
+    result->handle                        = handle;
+    result->nativeHookList                = dlsym(handle ,NATIVE_HOOK_LIST_SYMBOL);
+    result->onModuleLoaded                = dlsym(handle ,ON_MODULE_LOADED_SYMBOL);
+    result->onNativeForkAndSpecializePre  = dlsym(handle ,NATIVE_FORK_AND_SPECIALIZE_PRE_SYMBOL);
+    result->onNativeForkAndSpecializePost = dlsym(handle ,NATIVE_FORK_AND_SPECIALIZE_POST_SYMBOL);
+    result->onNativeForkSystemServerPre   = dlsym(handle ,NATIVE_FORK_SYSTEM_SERVER_PRE_SYMBOL);
+    result->onNativeForkSystemServerPost  = dlsym(handle ,NATIVE_FORK_SYSTEM_SERVER_POST_SYMBOL);
 
     return result;
 }
@@ -34,7 +34,7 @@ void Module::unload(void) {
 void Module::invokeModuleLoaded(void) {
     if ( !onModuleLoaded ) return;
 
-    Log::info() << "[Module] " << name << ": invokeModuleLoaded" << Log::END;
+    Log::info() << "[Module] " << name << ": moduleLoaded" << Log::END;
 
     reinterpret_cast<ModuleLoadedFunction>(onModuleLoaded)();
 }
@@ -48,41 +48,41 @@ void Module::invokeNativeForkAndSpecializePre(JNIEnv *env, jclass clazz, jint ui
                                               jintArray fdsToIgnore,
                                               jboolean is_child_zygote, jstring instructionSet,
                                               jstring appDataDir) {
-    if ( !onForkAndSpecializePre ) return;
+    if ( !onNativeForkAndSpecializePre ) return;
 
-    Log::info() << "[Module] " << name << ": invokeNativeForkAndSpecializePre" << Log::END;
+    Log::info() << "[Module] " << name << ": nativeForkAndSpecializePre" << Log::END;
 
-    reinterpret_cast<NativeForkAndSpecializePreFunction>(onForkAndSpecializePre)(env ,clazz ,uid ,gid ,gids ,
+    reinterpret_cast<NativeForkAndSpecializePreFunction>(onNativeForkAndSpecializePre)(env ,clazz ,uid ,gid ,gids ,
                                                                                  runtime_flags ,rlimits ,mount_external ,se_info ,se_name ,
                                                                                  fdsToClose ,fdsToIgnore ,is_child_zygote ,instructionSet ,appDataDir);
 }
 
 int Module::invokeNativeForkAndSpecializePost(JNIEnv *env, jclass clazz, jint res) {
-    if ( !onForkAndSpecializePost ) return 0;
+    if ( !onNativeForkAndSpecializePost ) return 0;
 
-    Log::info() << "[Module] " << name << ": invokeNativeForkAndSpecializePost" << Log::END;
+    Log::info() << "[Module] " << name << ": nativeForkAndSpecializePost" << Log::END;
 
-    return reinterpret_cast<NativeForkAndSpecializePostFunction>(onForkAndSpecializePost)(env ,clazz ,res);
+    return reinterpret_cast<NativeForkAndSpecializePostFunction>(onNativeForkAndSpecializePost)(env ,clazz ,res);
 }
 
 void Module::invokeNativeForkSystemServerPre(JNIEnv *env, jclass clazz, uid_t uid, gid_t gid, jintArray gids,
                                              jint debug_flags, jobjectArray rlimits, jlong permittedCapabilities,
                                              jlong effectiveCapabilities) {
-    if ( !onForkSystemServerPre ) return ;
+    if ( !onNativeForkSystemServerPre ) return ;
 
-    Log::info() << "[Module] " << name << ": invokeNativeForkSystemServerPre" << Log::END;
+    Log::info() << "[Module] " << name << ": nativeForkSystemServerPre" << Log::END;
 
-    reinterpret_cast<NativeForkSystemServerPreFunction>(onForkSystemServerPre)(env ,clazz ,uid ,gid ,gids ,
+    reinterpret_cast<NativeForkSystemServerPreFunction>(onNativeForkSystemServerPre)(env ,clazz ,uid ,gid ,gids ,
                                                                                debug_flags ,rlimits ,permittedCapabilities ,
                                                                                effectiveCapabilities);
 }
 
 int Module::invokeNativeForkSystemServerPost(JNIEnv *env, jclass clazz, jint res) {
-    if ( !onForkSystemServerPost ) return 0;
+    if ( !onNativeForkSystemServerPost ) return 0;
 
-    Log::info() << "[Module] " << name << ": invokeNativeForkSystemServerPost" << Log::END;
+    Log::info() << "[Module] " << name << ": nativeForkSystemServerPost" << Log::END;
 
-    return reinterpret_cast<NativeForkSystemServerPostFunction>(onForkSystemServerPost)(env ,clazz ,res);
+    return reinterpret_cast<NativeForkSystemServerPostFunction>(onNativeForkSystemServerPost)(env ,clazz ,res);
 }
 
 Module::NativeHookListPointer Module::getNativeHookList(void) noexcept {
@@ -151,6 +151,8 @@ bool Modules::handleJniRegisterNativeMethods(string const &class_name,
         auto method_hooks_iterator = (*current).second.equal_range(current_method_id);
         if ( method_hooks_iterator.first == method_hooks_iterator.second )
             continue;
+
+        Log::info() << "[Modules] handle " << current_method_id << Log::END;
 
         void *current_hook_function = method.fnPtr;
         std::for_each(method_hooks_iterator.first ,method_hooks_iterator.second ,[&](std::pair<string ,Module::NativeHookListPointer> p) {

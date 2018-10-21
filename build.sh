@@ -13,7 +13,7 @@ fi
 VERSION=$2
 [[ "$VERSION" == "" ]] && VERSION=v1
 
-LIBS_OUTPUT=$MODULE_NAME/build/ndkBuild/libs
+LIBS_OUTPUT=$MODULE_NAME/build/cmake/libs
 NDK_OUT=$MODULE_NAME/build/ndkBuild/obj
 
 # build
